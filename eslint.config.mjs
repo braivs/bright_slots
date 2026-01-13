@@ -1,0 +1,2 @@
+// Linter disabled
+export default [];

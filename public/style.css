@@ -1,0 +1,29 @@
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    color: rgba(255, 255, 255, 0.87);
+    background-color: #000000;
+}
+
+body {
+    display: flex;
+    align-items: center;      /* vertical center */
+    justify-content: center;  /* horizontal center */
+    background: #0f0f1a;      /* background around window */
+}
+
+canvas {
+    display: block;
+    margin: 0 auto;
+}
+
+#app {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    pointer-events: none;
+}
