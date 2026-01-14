@@ -1,4 +1,5 @@
 import {Application} from "pixi.js";
+import {SlotGame} from "./SlotGame.ts";
 
 (async () => {
   // Create a new application
@@ -9,9 +10,11 @@ import {Application} from "pixi.js";
     width: 800,
     height: 700,
     background: 0x1a1a2e,
+    // antialias: true
   });
 
   document.body.appendChild(app.canvas);
 
+  SlotGame(app)
 
 })();
