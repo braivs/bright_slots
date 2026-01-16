@@ -5,18 +5,21 @@ type Reel = {
   container: Container
   symbols: Text[]
   spinning: boolean
+  finalSymbols?: string[]
 }
 
 export const SlotGame = (app: Application<Renderer>) => {
   const reelCount = 3
   const symbols = ['🍒', '🍋', '🍊', '🔔', '⭐']
   const symbolsPerReel = 3 // visible symbols on reel
-  const balance = 1000
+  let balance = 1000
   const bet = 10
   let isSpinning = false
   let reels: Reel[] = []
   let spinButton: Graphics | null = null
-
+  let winText: Text | null = null
+  let balanceText: Text | null = null
+  let betText: Text | null = null
 
   // function for creating UI
   const setupUI = () => {
@@ -44,33 +47,18 @@ export const SlotGame = (app: Application<Renderer>) => {
     })
 
     // Balance
-    const balanceText = new Text(`Balance: ${balance}$`, infoStyle)
+    balanceText = new Text({text: `Balance: ${balance}$`, style: infoStyle})
     balanceText.anchor.set(0, 0.5) // Left edge, vertical centered
     balanceText.x = 50
     balanceText.y = 120
     app.stage.addChild(balanceText)
 
     // Bet
-    const betText = new Text(`Bet: ${bet}$`, infoStyle)
+    betText = new Text({text: `Bet: ${bet}$`, style: infoStyle})
     betText.anchor.set(0, 0.5)
     betText.x = 50
     betText.y = 160
     app.stage.addChild(betText)
-
-    // Win message
-    const winText = new Text({
-      text: '',
-      style: {
-        fontFamily: 'Arial',
-        fontSize: 36,
-        fill: '#00FF00',
-        fontWeight: 'bold'
-      }
-    })
-    winText.anchor.set(0.5)
-    winText.x = app.screen.width / 2
-    winText.y = app.screen.height - 100
-    app.stage.addChild(winText)
   }
 
   // Create reels
@@ -179,10 +167,9 @@ export const SlotGame = (app: Application<Renderer>) => {
     button.eventMode = 'static'
     button.cursor = 'pointer'
 
-    // onClick (simple show to console)
+    // onClick
     button.on('pointerdown', () => {
-      console.log('button clicked')
-      // there will be spin logic
+      spin()
     })
 
     // Hover effect
@@ -204,10 +191,119 @@ export const SlotGame = (app: Application<Renderer>) => {
     spinButton = button // save link for control
   }
 
+  const createWinText = () => {
+    winText = new Text({
+      text: '',
+      style: {
+        fontFamily: 'Arial',
+        fontSize: 30,
+        fill: '#00FF00',
+        fontWeight: 'bold'
+      }
+    })
+    winText.anchor.set(0.5)
+    winText.x = app.screen.width / 2
+    winText.y = app.screen.height - 30
+    app.stage.addChild(winText)
+  }
+
+  const spin = () => {
+    // check: spin restricted, if it is spinning or no money
+    if (isSpinning || balance < bet) {
+      console.log('spin restricted')
+      return
+    }
+
+    // write off the bet
+    balance -= bet
+    updateBalance()
+
+    // reset win message
+    if (winText !== null) {
+      winText.text = ''
+    }
+    isSpinning = true
+
+    // disable button while is spinning
+    if (spinButton !== null) {
+      spinButton.alpha = 0.5
+      spinButton.eventMode = 'none'
+    }
+
+    // Generate final symbols for each reels
+    reels.forEach(reel => {
+      // generate random symbols
+      const finalSymbols: string[] = []
+      for (let i = 0; i < symbolsPerReel; i++) {
+        finalSymbols.push(
+          symbols[Math.floor(Math.random() * symbols.length)]
+        )
+      }
+      reel.finalSymbols = finalSymbols
+
+      // set final symbols (without animation)
+      reel.symbols.forEach((symbol, symbolIndex) => {
+        if (symbolIndex < symbolsPerReel && reel.finalSymbols) {
+          symbol.text = reel.finalSymbols[symbolIndex]
+        }
+      })
+    })
+
+    checkWin()
+
+    // turn on button again
+    isSpinning = false
+    if (spinButton !== null) {
+      spinButton.alpha = 1
+      spinButton.eventMode = 'static'
+    }
+  }
+
+  const updateBalance = () => {
+    if (balanceText !== null) {
+      balanceText.text = `Balance: ${balance}$`
+      // if balance less than bet, make text red
+      balanceText.style.fill = balance < bet ? '#FF0000' : '#FFFFFF'
+    }
+  }
+
+  const checkWin = () => {
+    // take middle symbol from each reel
+    const middleRow = reels.map(
+      reel => reel.symbols[1].text
+    )
+    const [a, b, c] = middleRow
+    let win = 0
+
+    // win condition
+    if (a === b && b === c) {
+      win = bet * 10
+    }
+
+    if (win > 0) {
+      balance += win
+      if (winText !== null) {
+        winText.text = `WIN: ${win}$`
+        winText.style.fill = '#00FF00'
+      }
+    } else {
+      if (winText !== null) {
+        winText.text = 'Try again!'
+        winText.style.fill = '#FF0000'
+        setTimeout(() => {
+          // check winText again because TypeScript can't guarantee it's still not null after 2 seconds
+          winText && (winText.text = '')
+        }, 2000)
+      }
+    }
+
+    updateBalance()
+  }
 
 
   // Initialize game parts UI
   setupUI();
   createReels()
   createSpinButton()
+  createWinText() // called last so winText will be on top of all elements
 }
