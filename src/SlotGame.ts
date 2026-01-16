@@ -15,13 +15,14 @@ export const SlotGame = (app: Application<Renderer>) => {
   const bet = 10
   let isSpinning = false
   let reels: Reel[] = []
+  let spinButton: Graphics | null = null
 
 
   // function for creating UI
   const setupUI = () => {
     // Title
     const title = new Text({
-      text: 'SLOT MACHINE',
+      text: 'BRIGHT SLOTS',
       style: {
         fontFamily: 'Arial',
         fontSize: 48,
@@ -44,7 +45,7 @@ export const SlotGame = (app: Application<Renderer>) => {
 
     // Balance
     const balanceText = new Text(`Balance: ${balance}$`, infoStyle)
-    balanceText.anchor.set(0,0.5) // Left edge, vertical centered
+    balanceText.anchor.set(0, 0.5) // Left edge, vertical centered
     balanceText.x = 50
     balanceText.y = 120
     app.stage.addChild(balanceText)
@@ -146,7 +147,67 @@ export const SlotGame = (app: Application<Renderer>) => {
     }
   }
 
+  const createSpinButton = () => {
+    const buttonWidth = 200
+    const buttonHeight = 80
+    const buttonX = app.screen.width / 2 - buttonWidth / 2 // Centering
+    const buttonY = app.screen.height - 150
+
+    // Draw button
+    const button = new Graphics()
+    button.roundRect(0, 0, buttonWidth, buttonHeight, 15)
+    button.fill(0x00ff00)
+    button.stroke({width: 3, color: '0x00cc00'}) // outline
+    button.x = buttonX
+    button.y = buttonY
+
+    const buttonText = new Text({
+      text: 'SPIN',
+      style: {
+        fontFamily: 'Arial',
+        fontSize: 48,
+        fontWeight: 'bold',
+        fill: '#FFFFFF'
+      }
+    })
+    buttonText.anchor.set(0.5)
+    buttonText.x = buttonWidth / 2
+    buttonText.y = buttonHeight / 2
+    button.addChild(buttonText)
+
+    // turn on events
+    button.eventMode = 'static'
+    button.cursor = 'pointer'
+
+    // onClick (simple show to console)
+    button.on('pointerdown', () => {
+      console.log('button clicked')
+      // there will be spin logic
+    })
+
+    // Hover effect
+    button.on('pointerenter', () => {
+      button.clear()
+      button.roundRect(0, 0, buttonWidth, buttonHeight, 15)
+      button.fill(0x00cc00) // darker on hover
+      button.stroke({width: 3, color: '0x00aa00'})
+    })
+
+    button.on('pointerleave', () => {
+      button.clear()
+      button.roundRect(0, 0, buttonWidth, buttonHeight, 15)
+      button.fill(0x00ff00) // return the original color
+      button.stroke({width: 3, color: '0x00cc00'})
+    })
+
+    app.stage.addChild(button)
+    spinButton = button // save link for control
+  }
+
+
+
   // Initialize game parts UI
   setupUI();
   createReels()
+  createSpinButton()
 }
