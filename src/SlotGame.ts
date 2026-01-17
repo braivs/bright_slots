@@ -6,6 +6,8 @@ type Reel = {
   symbols: Text[]
   spinning: boolean
   finalSymbols?: string[]
+  targetPosition?: number
+  currentPosition?: number
 }
 
 export const SlotGame = (app: Application<Renderer>) => {
@@ -230,33 +232,97 @@ export const SlotGame = (app: Application<Renderer>) => {
       spinButton.eventMode = 'none'
     }
 
-    // Generate final symbols for each reels
-    reels.forEach(reel => {
-      // generate random symbols
-      const finalSymbols: string[] = []
-      for (let i = 0; i < symbolsPerReel; i++) {
-        finalSymbols.push(
-          symbols[Math.floor(Math.random() * symbols.length)]
-        )
-      }
-      reel.finalSymbols = finalSymbols
+    // Setup each reel for animation
+    reels.forEach((reel, index) => {
+      reel.spinning = true
 
-      // set final symbols (without animation)
-      reel.symbols.forEach((symbol, symbolIndex) => {
-        if (symbolIndex < symbolsPerReel && reel.finalSymbols) {
-          symbol.text = reel.finalSymbols[symbolIndex]
+      // Random spin distance (from 500 to 1500)
+      reel.targetPosition = Math.random() * 1000 + 500
+      reel.currentPosition = 0
+
+      // Generate final symbols with dealy (for cascade stop)
+      setTimeout(() => {
+        const finalSymbols: string[] = []
+        for (let i = 0; i < symbolsPerReel; i++) {
+          finalSymbols.push(
+            symbols[Math.floor(Math.random() * symbols.length)]
+          )
         }
-      })
+        reel.finalSymbols = finalSymbols
+      }, index * 300) // Each next reel stops later
     })
 
-    checkWin()
+    // Start animation
+    animateReels()
+  }
 
-    // turn on button again
-    isSpinning = false
-    if (spinButton !== null) {
-      spinButton.alpha = 1
-      spinButton.eventMode = 'static'
+  const animateReels = () => {
+    const spinSpeed = 20
+    const reelHeight = 450 // todo: maybe later do this global
+
+    // Function called every frame
+    const animationTicker = (ticker: { deltaTime: number }) => {
+      let allStopped = true
+
+      reels.forEach(reel => {
+        if (!reel.spinning) return
+
+        allStopped = false
+        if (reel.currentPosition !== undefined && reel.targetPosition !== undefined) {
+          reel.currentPosition += spinSpeed * ticker.deltaTime // Expend position
+
+          // Move symbols
+          reel.symbols.forEach((symbol, symbolIndex) => {
+            const symbolHeight = reelHeight / symbolsPerReel
+
+            // Calculate new symbol position (infinite scroll effect)
+            symbol.y = symbolIndex * symbolHeight -
+              (reel.currentPosition! % (symbolHeight * (symbolsPerReel + 2)))
+
+            // If symbol went above, move to bottom
+            if (symbol.y < -symbolHeight) {
+              symbol.y += symbolHeight * (symbolsPerReel + 2)
+
+              // change symbol to random (during spinning)
+              symbol.text = symbols[Math.floor(Math.random() * symbols.length)]
+            }
+          })
+
+          // Check stop condition
+          if (reel.currentPosition >= reel.targetPosition) {
+            reel.spinning = false
+
+            // Set final symbols
+            if (reel.finalSymbols) {
+              reel.symbols.forEach((symbol, index) => {
+                const symbolHeight = reelHeight / symbolsPerReel
+                symbol.y = index * symbolHeight
+                if (index < symbolsPerReel) {
+                  symbol.text = reel.finalSymbols![index]
+                }
+              })
+            }
+          }
+        }
+      })
+
+      // If all reel stopped
+      if (allStopped) {
+        app.ticker.remove(animationTicker) // Remove animation
+
+        checkWin()
+
+        // turn on button again
+        isSpinning = false
+        if (spinButton !== null) {
+          spinButton.alpha = 1
+          spinButton.eventMode = 'static'
+        }
+      }
     }
+
+    // Add animation to ticker
+    app.ticker.add(animationTicker)
   }
 
   const updateBalance = () => {
