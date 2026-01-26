@@ -6,6 +6,11 @@ html, body {
     overflow: hidden;
     color: rgba(255, 255, 255, 0.87);
     background-color: #000000;
+    /* Prevent text selection and zoom on mobile */
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: manipulation;
 }
 
 body {
@@ -13,11 +18,21 @@ body {
     align-items: center;      /* vertical center */
     justify-content: center;  /* horizontal center */
     background: #0f0f1a;      /* background around window */
+    /* Prevent scrolling on mobile */
+    position: fixed;
+    width: 100vw;
+    height: 100vh;
 }
 
 canvas {
     display: block;
     margin: 0 auto;
+    /* Ensure crisp rendering on mobile */
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+    image-rendering: pixelated;
+    /* For better quality on high DPI screens */
+    image-rendering: auto;
 }
 
 #app {
@@ -26,4 +41,17 @@ canvas {
     height: 100%;
     overflow: hidden;
     pointer-events: none;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+    body {
+        /* Prevent zoom on double tap */
+        touch-action: pan-x pan-y;
+    }
+    
+    canvas {
+        /* Better touch handling */
+        touch-action: none;
+    }
 }
