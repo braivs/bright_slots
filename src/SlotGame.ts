@@ -8,6 +8,7 @@ type Reel = {
   finalSymbols?: string[]
   targetPosition?: number
   currentPosition?: number
+  symbolSequence?: string[] // Pre-generated sequence of symbols for smooth scrolling
 }
 
 export const SlotGame = (app: Application<Renderer>) => {
@@ -240,7 +241,18 @@ export const SlotGame = (app: Application<Renderer>) => {
       reel.targetPosition = Math.random() * 1000 + 500
       reel.currentPosition = 0
 
-      // Generate final symbols with dealy (for cascade stop)
+      // Generate long sequence of symbols for smooth scrolling
+      // Sequence length should cover max spin distance + some extra
+      const sequenceLength = 100
+      const symbolSequence: string[] = []
+      for (let i = 0; i < sequenceLength; i++) {
+        symbolSequence.push(
+          symbols[Math.floor(Math.random() * symbols.length)]
+        )
+      }
+      reel.symbolSequence = symbolSequence
+
+      // Generate final symbols with delay (for cascade stop)
       setTimeout(() => {
         const finalSymbols: string[] = []
         for (let i = 0; i < symbolsPerReel; i++) {
@@ -249,6 +261,18 @@ export const SlotGame = (app: Application<Renderer>) => {
           )
         }
         reel.finalSymbols = finalSymbols
+        
+        // If reel already stopped, update positions and symbols immediately
+        if (!reel.spinning) {
+          const reelHeight = 450
+          const symbolHeight = reelHeight / symbolsPerReel
+          reel.symbols.forEach((symbol, symbolIndex) => {
+            symbol.y = symbolIndex * symbolHeight
+            if (symbolIndex < symbolsPerReel) {
+              symbol.text = finalSymbols[symbolIndex]
+            }
+          })
+        }
       }, index * 300) // Each next reel stops later
     })
 
@@ -271,35 +295,50 @@ export const SlotGame = (app: Application<Renderer>) => {
         if (reel.currentPosition !== undefined && reel.targetPosition !== undefined) {
           reel.currentPosition += spinSpeed * ticker.deltaTime // Expend position
 
-          // Move symbols
-          reel.symbols.forEach((symbol, symbolIndex) => {
-            const symbolHeight = reelHeight / symbolsPerReel
+          // Move symbols (only if still spinning)
+          if (reel.symbolSequence && reel.spinning) {
+            const sequence = reel.symbolSequence // Store reference for TypeScript
+            reel.symbols.forEach((symbol, symbolIndex) => {
+              const symbolHeight = reelHeight / symbolsPerReel
 
-            // Calculate new symbol position (infinite scroll effect)
-            symbol.y = symbolIndex * symbolHeight -
-              (reel.currentPosition! % (symbolHeight * (symbolsPerReel + 2)))
+              // Calculate new symbol position (infinite scroll effect)
+              symbol.y = symbolIndex * symbolHeight -
+                (reel.currentPosition! % (symbolHeight * (symbolsPerReel + 2)))
 
-            // If symbol went above, move to bottom
-            if (symbol.y < -symbolHeight) {
-              symbol.y += symbolHeight * (symbolsPerReel + 2)
+              // Calculate which symbol from sequence should be displayed
+              // Based on current position and symbol index
+              // Each symbol should show the sequence element that corresponds to its logical position
+              const sequenceIndex = (symbolIndex + Math.floor(reel.currentPosition! / symbolHeight)) % sequence.length
+              symbol.text = sequence[sequenceIndex]
 
-              // change symbol to random (during spinning)
-              symbol.text = symbols[Math.floor(Math.random() * symbols.length)]
-            }
-          })
+              // If symbol went above, move to bottom
+              if (symbol.y < -symbolHeight) {
+                symbol.y += symbolHeight * (symbolsPerReel + 2)
+              }
+            })
+          }
 
           // Check stop condition
           if (reel.currentPosition >= reel.targetPosition) {
             reel.spinning = false
 
-            // Set final symbols
+            // Set final symbols and positions
             if (reel.finalSymbols) {
+              const symbolHeight = reelHeight / symbolsPerReel
               reel.symbols.forEach((symbol, index) => {
-                const symbolHeight = reelHeight / symbolsPerReel
+                // Set position for all symbols
                 symbol.y = index * symbolHeight
+                // Set text only for visible symbols
                 if (index < symbolsPerReel) {
                   symbol.text = reel.finalSymbols![index]
                 }
+              })
+            } else {
+              // If finalSymbols not ready yet, at least fix positions
+              // This prevents symbols from "sliding down"
+              const symbolHeight = reelHeight / symbolsPerReel
+              reel.symbols.forEach((symbol, index) => {
+                symbol.y = index * symbolHeight
               })
             }
           }
